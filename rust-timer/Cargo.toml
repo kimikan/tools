@@ -1,0 +1,8 @@
+[package]
+name = "timer"
+version = "0.1.0"
+authors = ["kan"]
+
+[dependencies]
+mio="*"
+slab="*"
