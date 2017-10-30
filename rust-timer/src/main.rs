@@ -1,4 +1,13 @@
 
+/*
+ * to simulate the fuction like golang
+ * select {
+ * case time.After(30):
+ *     doSomething();
+ * case i := msg_chan:
+ *     handleMsg();
+ * }
+ */
 extern crate mio;
 extern crate slab;
 
