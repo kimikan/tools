@@ -99,7 +99,7 @@ fn main() {
     let mut vec = vec![];
     vec.push(10);
     vec.push(10);
-    vec.push(10);
+    vec.push(30);
     vec.push(20 );
 
     let mut context = Context::new();
