@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"net"
@@ -14,10 +15,28 @@ var ip string
 
 func main() {
 	ip = ":9999"
-	
-	trueList = []string{"127.0.0.1:6666"}
+
+	file, err := os.Open("app.def")
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	rb := bufio.NewReader(file)
+
+	trueList = []string{}
+	for {
+		line, _, err := rb.ReadLine()
+
+		if err == io.EOF {
+			break
+		}
+
+		trueList = append(trueList, string(line))
+		//do something fmt.Println(string(line))
+	}
+
 	if len(trueList) <= 0 {
-		fmt.Println("鍚庣�疘P鍜岀��鍙ｄ笉鑳界┖,鎴栬€呮棤鏁�")
+		fmt.Println("no target address")
 		os.Exit(1)
 	}
 	server()
@@ -33,7 +52,7 @@ func server() {
 	for {
 		conn, err := lis.Accept()
 		if err != nil {
-			fmt.Println("寤虹珛杩炴帴閿欒��:%v\n", err)
+			fmt.Println("err: ", err)
 			continue
 		}
 		fmt.Println(conn.RemoteAddr(), conn.LocalAddr())
@@ -49,18 +68,18 @@ func handle(sconn net.Conn) {
 	}
 	dconn, err := net.Dial("tcp", ip)
 	if err != nil {
-		fmt.Printf("杩炴帴%v澶辫触:%v\n", ip, err)
+		fmt.Println("Connect failed: ", ip, err)
 		return
 	}
 	ExitChan := make(chan bool, 1)
 	go func(sconn net.Conn, dconn net.Conn, Exit chan bool) {
 		_, err := io.Copy(dconn, sconn)
-		fmt.Printf("寰€%v鍙戦€佹暟鎹�澶辫触:%v\n", ip, err)
+		fmt.Println("copy failed:", ip, err)
 		ExitChan <- true
 	}(sconn, dconn, ExitChan)
 	go func(sconn net.Conn, dconn net.Conn, Exit chan bool) {
 		_, err := io.Copy(sconn, dconn)
-		fmt.Printf("浠�%v鎺ユ敹鏁版嵁澶辫触:%v\n", ip, err)
+		fmt.Println("Copy failed : ", ip, err)
 		ExitChan <- true
 	}(sconn, dconn, ExitChan)
 	<-ExitChan
