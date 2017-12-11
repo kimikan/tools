@@ -1,6 +1,7 @@
 
 /*
  * to simulate the fuction like golang
+ * scene: tcp stream & heartbeat? 
  * select {
  * case time.After(30):
  *     doSomething();
