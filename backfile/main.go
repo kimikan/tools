@@ -65,7 +65,7 @@ func main() {
 			n2 := n.Year()*10000 + n.Day() + int(n.Month())*100
 
 			nx := n1 + n2*1000000
-			fmt.Println("Ok, to go")
+			fmt.Println("Ok,backing ", nx)
 			if nx >= cfg.StartTime && nx <= cfg.EndTime {
 				CopyFile(fmt.Sprint(nx, cfg.TargetExt), cfg.SourceFile)
 			}
