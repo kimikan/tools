@@ -34,13 +34,13 @@ func loadConfig() *config {
 //Server indicats some info
 type Server struct {
 	sync.RWMutex
-	_targetWriteChan chan []byte
 	_sourceWriteChan chan []byte
 
 	_targetConn net.Conn
 	_clients    *list.List
 
-	_config *config
+	_logonReplay []byte
+	_config      *config
 }
 
 func newServer(cfg *config) *Server {
@@ -50,7 +50,6 @@ func newServer(cfg *config) *Server {
 		_config:  cfg,
 
 		_sourceWriteChan: make(chan []byte),
-		_targetWriteChan: make(chan []byte),
 	}
 }
 
@@ -96,24 +95,30 @@ func (p *Server) clear() {
 		}
 	}
 	p.Unlock()
+
+	if p._targetConn != nil {
+		p._targetConn.Close()
+
+	}
 	p._targetConn = nil
 }
 
-func (p *Server) getMessage(conn net.Conn) ([]byte, error) {
+func (p *Server) getMessage2(conn net.Conn) ([]byte, error) {
 
 	var msgType uint32
 	var bodyLen uint32
+	fmt.Println("1")
 	err := binary.Read(conn, binary.BigEndian, &msgType)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
-
+	fmt.Println("2")
 	err = binary.Read(conn, binary.BigEndian, &bodyLen)
 	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println("3", bodyLen)
 	var buf []byte
 
 	buf = make([]byte, bodyLen+12)
@@ -122,7 +127,7 @@ func (p *Server) getMessage(conn net.Conn) ([]byte, error) {
 		for {
 			got := 0
 			n, err2 := conn.Read(buf2[got:])
-			if err2 != nil || n < 0 {
+			if err2 != nil {
 				return nil, err2
 			}
 
@@ -135,12 +140,12 @@ func (p *Server) getMessage(conn net.Conn) ([]byte, error) {
 			break
 		}
 	}
-
-	n, err := conn.Read(buf[bodyLen+8:])
-	if err != nil || n <= 0 {
+	fmt.Println("4")
+	_, err = conn.Read(buf[bodyLen+8:])
+	if err != nil {
 		return nil, err
 	}
-
+	fmt.Println("5")
 	binary.BigEndian.PutUint32(buf[:], msgType)
 	binary.BigEndian.PutUint32(buf[4:], bodyLen)
 
@@ -148,12 +153,63 @@ func (p *Server) getMessage(conn net.Conn) ([]byte, error) {
 	return buf, nil
 }
 
+func (p *Server) getMessage(conn net.Conn) (uint32, []byte, error) {
+	var msgType uint32
+	var bodyLen uint32
+	err := binary.Read(conn, binary.BigEndian, &msgType)
+	if err != nil {
+		fmt.Println(err)
+		return 0, nil, err
+	}
+
+	err = binary.Read(conn, binary.BigEndian, &bodyLen)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	var buf []byte
+	if bodyLen > 0 {
+		buf = make([]byte, bodyLen)
+
+		for {
+			got := 0
+			n, err2 := conn.Read(buf[got:])
+			if err2 != nil || n < 0 {
+				return 0, nil, err2
+			}
+
+			got += n
+
+			if got < int(bodyLen) {
+				continue
+			}
+
+			break
+		}
+
+	}
+
+	var checksum uint32
+	err2 := binary.Read(conn, binary.BigEndian, &checksum)
+	if err2 != nil {
+		return 0, nil, err2
+	}
+
+	bufx := make([]byte, bodyLen+12)
+	//fmt.Println(msgType, bodyLen, buf)
+	binary.BigEndian.PutUint32(bufx[:], msgType)
+	binary.BigEndian.PutUint32(bufx[4:], bodyLen)
+	binary.BigEndian.PutUint32(bufx[bodyLen+8:], checksum)
+	copy(bufx[8:], buf[:])
+	return msgType, bufx, nil
+}
+
 func (p *Server) dispatcher() {
 	fmt.Println("dispatcher start")
 	go func() {
 		for {
 			if p._targetConn != nil {
-				buf, err := p.getMessage(p._targetConn)
+				msgType, buf, err := p.getMessage(p._targetConn)
 				if err != nil {
 					fmt.Println("target conn read: ", err)
 					break
@@ -162,14 +218,17 @@ func (p *Server) dispatcher() {
 				if len(buf) > 0 {
 					p._sourceWriteChan <- buf
 					//fmt.Println("target read: ", buf)
+					if msgType == 1 {
+						p._logonReplay = buf
+					}
+				} else {
+					break
 				}
+			} else {
+				break
 			}
 		}
 
-		if p._targetConn != nil {
-			p._targetConn.Close()
-			p._targetConn = nil
-		}
 		p.clear()
 		fmt.Println("dispatcher stop")
 	}()
@@ -199,20 +258,17 @@ func (p *Server) dispatcher() {
 				for _, v := range cs {
 					p._clients.Remove(v)
 				}
+				clientsCount := p._clients.Len()
 				p.Unlock()
-			}
-		case v, ok := <-p._targetWriteChan:
-			if ok {
-				if p._targetConn != nil {
-					_, err := p._targetConn.Write(v)
-					if err != nil {
-						p.clear()
-						break
+
+				if clientsCount == 0 {
+					if p._targetConn != nil {
+						p._targetConn.Close()
 					}
-				} else {
-					break
+					p.clear()
 				}
 			}
+
 		} //end select
 	} //end for
 }
@@ -238,18 +294,30 @@ func (p *Server) handle(conn net.Conn) {
 		p.Unlock()
 
 		for {
-			buf, err := p.getMessage(conn)
+			msgType, buf, err := p.getMessage(conn)
 			if err != nil {
 				break
 			}
 			fmt.Println("conn read: ", buf)
 
 			if len(buf) > 0 {
+				if msgType == 1 {
+					conn.Write(p._logonReplay)
+				}
+
 				p.RLock()
 				v := p._clients.Front()
 				if v != nil {
 					if v.Value == conn {
-						p._targetWriteChan <- buf
+						if p._targetConn != nil {
+							_, err := p._targetConn.Write(buf)
+							if err != nil {
+								p.clear()
+								break
+							}
+						} else {
+							break
+						}
 					}
 				}
 				p.RUnlock()
@@ -263,7 +331,12 @@ func (p *Server) handle(conn net.Conn) {
 		p.Lock()
 
 		p._clients.Remove(element)
+		clientsCount := p._clients.Len()
 		p.Unlock()
+		fmt.Println("len: ", p._clients.Len())
+		if clientsCount == 0 {
+			p.clear()
+		}
 	}()
 }
 
