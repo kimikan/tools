@@ -1,7 +1,6 @@
 package main
 
 import (
-	"container/list"
 	"encoding/binary"
 	"encoding/xml"
 	"fmt"
@@ -31,13 +30,94 @@ func loadConfig() *config {
 	return c
 }
 
+type clients struct {
+	sync.RWMutex
+	_clients []net.Conn
+
+	_selected net.Conn
+}
+
+func newClients() *clients {
+	return &clients{
+		_clients:  []net.Conn{},
+		_selected: nil,
+	}
+}
+
+func (p *clients) add(c net.Conn) {
+	p.Lock()
+	p._clients = append(p._clients, c)
+
+	if p._selected == nil {
+		p._selected = c
+	}
+	p.Unlock()
+}
+
+func (p *clients) remove(c net.Conn) {
+	fmt.Println(p)
+	p.Lock()
+	for k, v := range p._clients {
+		if v == c {
+			v.Close()
+			p._clients = append(p._clients[:k], p._clients[k+1:]...)
+
+		}
+	}
+	p.Unlock()
+
+	if c == p._selected {
+		p.switchSelected()
+	}
+	fmt.Println(p)
+}
+
+func (p *clients) foreach(f func(net.Conn)) {
+	p.RLock()
+	for _, v := range p._clients {
+		f(v)
+	}
+	p.RUnlock()
+}
+
+func (p *clients) selected() net.Conn {
+	return p._selected
+}
+
+func (p *clients) clear() {
+	p.foreach(func(c net.Conn) {
+		c.Close()
+	})
+
+	p.Lock()
+	p._clients = []net.Conn{}
+	p.Unlock()
+}
+
+func (p *clients) empty() bool {
+	p.RLock()
+	defer p.RUnlock()
+
+	return len(p._clients) <= 0
+}
+
+func (p *clients) switchSelected() {
+	p.RLock()
+	p._selected = nil
+	if p._clients != nil {
+		if len(p._clients) > 0 {
+			p._selected = p._clients[0]
+		}
+	}
+	p.RUnlock()
+}
+
 //Server indicats some info
 type Server struct {
-	sync.RWMutex
 	_sourceWriteChan chan []byte
 
 	_targetConn net.Conn
-	_clients    *list.List
+	_clients    *clients
 
 	_logonReplay []byte
 	_config      *config
@@ -46,7 +126,7 @@ type Server struct {
 func newServer(cfg *config) *Server {
 
 	return &Server{
-		_clients: list.New(),
+		_clients: newClients(),
 		_config:  cfg,
 
 		_sourceWriteChan: make(chan []byte),
@@ -80,27 +160,16 @@ func (p *Server) run() error {
 	//return nil
 }
 
-func (p *Server) clear() {
-	p.Lock()
-
-	for {
-		v := p._clients.Front()
-		if v == nil {
-			break
-		}
-		p._clients.Remove(v)
-
-		if value, ok := v.Value.(net.Conn); ok {
-			value.Close()
-		}
-	}
-	p.Unlock()
-
+func (p *Server) closeTarget() {
 	if p._targetConn != nil {
 		p._targetConn.Close()
-
+		p._targetConn = nil
 	}
-	p._targetConn = nil
+}
+
+func (p *Server) clear() {
+	p._clients.clear()
+	p.closeTarget()
 }
 
 func (p *Server) getMessage2(conn net.Conn) ([]byte, error) {
@@ -238,34 +307,21 @@ func (p *Server) dispatcher() {
 		case v, ok := <-p._sourceWriteChan:
 
 			if ok {
-				cs := []*list.Element{}
-				p.RLock()
-				for e := p._clients.Front(); e != nil; e = e.Next() {
-					if value, ok := e.Value.(net.Conn); ok {
-						_, err := value.Write(v)
-						if err != nil {
-							cs = append(cs, e)
-							fmt.Println("write failed: ", err)
-							value.Close()
-						}
-					} else {
-						cs = append(cs, e)
+				cs := []net.Conn{}
+				p._clients.foreach(func(c net.Conn) {
+					_, err := c.Write(v)
+					if err != nil {
+						cs = append(cs, c)
+						fmt.Println("write failed: ", err)
 					}
-				}
-				p.RUnlock()
+				})
 
-				p.Lock()
 				for _, v := range cs {
-					p._clients.Remove(v)
+					p._clients.remove(v)
 				}
-				clientsCount := p._clients.Len()
-				p.Unlock()
 
-				if clientsCount == 0 {
-					if p._targetConn != nil {
-						p._targetConn.Close()
-					}
-					p.clear()
+				if p._clients.empty() {
+					p.closeTarget()
 				}
 			}
 
@@ -287,32 +343,28 @@ func (p *Server) handle(conn net.Conn) {
 	}
 
 	go func() {
-		defer conn.Close()
+		defer p._clients.remove(conn)
 
-		p.Lock()
-		element := p._clients.PushBack(conn)
-		p.Unlock()
+		p._clients.add(conn)
 
 		for {
 			msgType, buf, err := p.getMessage(conn)
 			if err != nil {
 				break
 			}
-			fmt.Println("conn read: ", buf)
 
 			if len(buf) > 0 {
 				if msgType == 1 {
 					conn.Write(p._logonReplay)
 				}
 
-				p.RLock()
-				v := p._clients.Front()
+				v := p._clients.selected()
 				if v != nil {
-					if v.Value == conn {
+					if v == conn {
 						if p._targetConn != nil {
 							_, err := p._targetConn.Write(buf)
 							if err != nil {
-								p.clear()
+								p.close()
 								break
 							}
 						} else {
@@ -320,7 +372,6 @@ func (p *Server) handle(conn net.Conn) {
 						}
 					}
 				}
-				p.RUnlock()
 
 			} else {
 				fmt.Println("read 0 buffer")
@@ -328,14 +379,9 @@ func (p *Server) handle(conn net.Conn) {
 			}
 		}
 		fmt.Println("conn closed")
-		p.Lock()
 
-		p._clients.Remove(element)
-		clientsCount := p._clients.Len()
-		p.Unlock()
-		fmt.Println("len: ", p._clients.Len())
-		if clientsCount == 0 {
-			p.clear()
+		if p._clients.empty() {
+			p.closeTarget()
 		}
 	}()
 }
