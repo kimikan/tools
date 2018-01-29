@@ -1,0 +1,5 @@
+<configuration>
+        <target_addr>139.196.102.197:6666</target_addr>
+        <local_port>9999</local_port>
+</configuration>
+
