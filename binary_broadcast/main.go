@@ -464,12 +464,6 @@ func (p *Server) handle(conn net.Conn) {
 			if len(buf) > 0 {
 				if msgType == 1 {
 					conn.Write(p._logonReplay)
-				} else if msgType == 3 {
-					err1 := heartbeat(conn)
-					if err1 != nil {
-						fmt.Println("heartbeat failed")
-						break
-					}
 				}
 			} else {
 				fmt.Println("read 0 buffer")
