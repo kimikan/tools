@@ -35,56 +35,36 @@ func loadConfig() *config {
 
 type clients struct {
 	sync.RWMutex
-	_clients []net.Conn
-
-	_selected net.Conn
+	_clients map[net.Conn]interface{}
 }
 
 func newClients() *clients {
 	return &clients{
-		_clients:  []net.Conn{},
-		_selected: nil,
+		_clients: make(map[net.Conn]interface{}),
 	}
 }
 
 func (p *clients) add(c net.Conn) {
+	fmt.Println("add conn")
 	p.Lock()
-	p._clients = append(p._clients, c)
-
-	if p._selected == nil {
-		p._selected = c
-	}
+	p._clients[c] = struct{}{}
 	p.Unlock()
 }
 
 func (p *clients) remove(c net.Conn) {
-	fmt.Println(p)
+	fmt.Println("remove conn")
 	p.Lock()
-	for k, v := range p._clients {
-		if v == c {
-			v.Close()
-			p._clients = append(p._clients[:k], p._clients[k+1:]...)
-
-		}
-	}
+	delete(p._clients, c)
 	p.Unlock()
-
-	if c == p._selected {
-		p.switchSelected()
-	}
 	fmt.Println(p)
 }
 
 func (p *clients) foreach(f func(net.Conn)) {
 	p.RLock()
-	for _, v := range p._clients {
-		f(v)
+	for k := range p._clients {
+		f(k)
 	}
 	p.RUnlock()
-}
-
-func (p *clients) selected() net.Conn {
-	return p._selected
 }
 
 func (p *clients) clear() {
@@ -93,7 +73,7 @@ func (p *clients) clear() {
 	})
 
 	p.Lock()
-	p._clients = []net.Conn{}
+	p._clients = make(map[net.Conn]interface{})
 	p.Unlock()
 }
 
@@ -102,17 +82,6 @@ func (p *clients) empty() bool {
 	defer p.RUnlock()
 
 	return len(p._clients) <= 0
-}
-
-func (p *clients) switchSelected() {
-	p.RLock()
-	p._selected = nil
-	if p._clients != nil {
-		if len(p._clients) > 0 {
-			p._selected = p._clients[0]
-		}
-	}
-	p.RUnlock()
 }
 
 //Server indicats some info
@@ -161,12 +130,12 @@ func struct2Bytes(msg interface{}) ([]byte, error) {
 }
 
 func generateCheckSum(buf []byte) uint32 {
-	var sum uint64
-	for b := range buf {
-		sum += uint64(int8(b))
+	var sum uint32
+	for _, b := range buf {
+		sum += uint32(b)
 	}
 
-	return uint32(sum % 256)
+	return (sum % 256)
 }
 
 //LoginMsgID ..
@@ -179,7 +148,7 @@ var SendCompID = "F000648Q0011"
 var TargetCompID = "VDE"
 
 //HeartBeatInt ..
-var HeartBeatInt uint32 = 20
+var HeartBeatInt uint32 = 150
 
 //Password ..
 var Password = "F000648Q0011"
@@ -208,7 +177,7 @@ func logon(conn net.Conn) error {
 	msg.heartBeat = HeartBeatInt
 	copy(msg.password[:], []byte(Password))
 	copy(msg.version[:], []byte(DefaultAppVerID))
-
+	fmt.Println(msg)
 	buf, err := struct2Bytes(&msg)
 	if err != nil {
 		return err
@@ -296,24 +265,28 @@ func (p *Server) connectToTarget() error {
 				break
 			}
 
+			//fmt.Println("From target: ", buf)
+			if msgType == 3 {
+
+				err1 := heartbeat(dconn)
+				if err1 != nil {
+					fmt.Println("heartbeat failedx: ", err1)
+					break
+				}
+			}
+
 			if len(buf) > 0 {
 				if msgType == 1 && p._logonReplay == nil {
 					p._logonReplay = buf
 					fmt.Println("logon reply: ", buf)
 				}
 
-				if msgType == 3 {
-					err1 := heartbeat(dconn)
-					if err1 != nil {
-						fmt.Println("heartbeat failedx: ", err1)
-						break
-					}
-				}
-
 				if msgType != 1 {
 					cs := []net.Conn{}
+
 					p._clients.foreach(func(c net.Conn) {
 						_, err := c.Write(buf)
+						//fmt.Println("write to client: ", buf)
 						if err != nil {
 							cs = append(cs, c)
 							fmt.Println("write to client failed: ", err)
@@ -333,9 +306,9 @@ func (p *Server) connectToTarget() error {
 	//sending....
 	go func() {
 		for {
-			t := time.After(time.Duration(1) * time.Second)
+			t := time.After(time.Duration(5) * time.Second)
 			<-t
-
+			//fmt.Println("heartbeat to target")
 			err1 := heartbeat(dconn)
 			if err1 != nil {
 				fmt.Println("heartbeat failed: ", err1)
@@ -347,7 +320,7 @@ func (p *Server) connectToTarget() error {
 	}()
 
 	done.Wait()
-
+	fmt.Println("Target connection failed.")
 	return nil
 }
 
@@ -397,6 +370,60 @@ func (p *Server) clear() {
 	p.closeTarget()
 }
 
+func (p *Server) getMessage2(conn net.Conn) (uint32, []byte, error) {
+	var msgType uint32
+	var bodyLen uint32
+	err := binary.Read(conn, binary.BigEndian, &msgType)
+	if err != nil {
+		fmt.Println(err)
+		return 0, nil, err
+	}
+
+	err = binary.Read(conn, binary.BigEndian, &bodyLen)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	var buf []byte
+	if bodyLen > 0 {
+		buf = make([]byte, bodyLen)
+
+		for {
+			got := 0
+			n, err2 := conn.Read(buf[got:])
+			if err2 != nil || n < 0 {
+				return 0, nil, err2
+			}
+
+			got += n
+
+			if got < int(bodyLen) {
+				continue
+			}
+
+			break
+		}
+
+	}
+
+	var checksum uint32
+	err2 := binary.Read(conn, binary.BigEndian, &checksum)
+	if err2 != nil {
+		return 0, nil, err2
+	}
+
+	buffer := bytes.NewBuffer(make([]byte, 12+bodyLen))
+	binary.Write(buffer, binary.BigEndian, msgType)
+	binary.Write(buffer, binary.BigEndian, bodyLen)
+	if bodyLen > 0 {
+		binary.Write(buffer, binary.BigEndian, buf)
+	}
+
+	binary.Write(buffer, binary.BigEndian, checksum)
+	//fmt.Println(msgType, bodyLen, buf)
+	return msgType, buffer.Bytes(), nil
+}
+
 func (p *Server) getMessage(conn net.Conn) (uint32, []byte, error) {
 	var msgType uint32
 	var bodyLen uint32
@@ -444,7 +471,11 @@ func (p *Server) getMessage(conn net.Conn) (uint32, []byte, error) {
 	binary.BigEndian.PutUint32(bufx[:], msgType)
 	binary.BigEndian.PutUint32(bufx[4:], bodyLen)
 	binary.BigEndian.PutUint32(bufx[bodyLen+8:], checksum)
-	copy(bufx[8:], buf[:])
+
+	if bodyLen > 0 {
+		copy(bufx[8:], buf[:])
+	}
+
 	return msgType, bufx, nil
 }
 
