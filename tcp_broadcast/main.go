@@ -239,9 +239,9 @@ func (p *Server) getMessage(conn net.Conn) (uint32, []byte, error) {
 	var buf []byte
 	if bodyLen > 0 {
 		buf = make([]byte, bodyLen)
-
+		got := 0
 		for {
-			got := 0
+
 			n, err2 := conn.Read(buf[got:])
 			if err2 != nil || n < 0 {
 				return 0, nil, err2
