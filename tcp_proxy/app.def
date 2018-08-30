@@ -1,5 +1,5 @@
 <configuration>
-        <target_addr>127.0.0.1:6666</target_addr>
+        <target_addr>127.0.0.1:1080</target_addr>
         <local_port>9999</local_port>
 </configuration>
 
