@@ -62,6 +62,6 @@ async fn main() -> anyhow::Result<()> {
     //let r = tokio::spawn(async move {handle(&first).await} );
     //r.await?.expect("TODO: panic message");
 
-    tokio::join!(handle(&first), handle(&second))?;
+    tokio::try_join!(handle(&first), handle(&second))?;
     Ok(())
 }
