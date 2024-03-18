@@ -1,0 +1,16 @@
+[package]
+name = "radar"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow="*"
+calamine="*"
+prettytable-rs="*"
+pcap-file = "2.0.0-rc1"
+pdu = "1.1"
+byteorder = "1.5.0"
+
+bitorder = "0.0.2"
