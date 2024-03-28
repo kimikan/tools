@@ -122,6 +122,43 @@ pub struct Payload<'a> {
     pub time_stamp_: u64,
 }
 
+impl<'a> Payload<'a> {
+    #[allow(dead_code)]
+    pub fn radars(&self) -> Vec<RadarType> {
+        self.frames_.iter().map(|v| v.type_).collect::<Vec<_>>()
+    }
+
+    fn simple_frames(&self) -> Vec<(RadarType, String, Vec<(String, f64)>)> {
+        self.frames_
+            .iter()
+            .map(|v| {
+                let radar = v.type_;
+                let metadata = v.meta_data.unwrap();
+                let msg_id = metadata.msg_id_str.clone();
+                let signals = v
+                    .signals
+                    .iter()
+                    .zip(metadata.signals.iter())
+                    .map(|v| (v.1.signal_name.clone(), v.0.clone()))
+                    .collect::<Vec<_>>();
+
+                (radar, msg_id, signals)
+            })
+            .collect::<Vec<_>>()
+    } // end fn
+}
+
+use std::fmt::{Display, Formatter};
+impl<'a> Display for Payload<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Payload")
+            .field("project", &self.project_)
+            .field("timestamp", &self.time_stamp_)
+            .field("Frames", &self.simple_frames())
+            .finish()
+    }
+}
+
 impl TryFrom<&[u8]> for Payload<'_> {
     type Error = anyhow::Error;
 
