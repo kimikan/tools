@@ -5,6 +5,7 @@ use pcap_file::pcap::{PcapPacket, PcapReader};
 use pdu::Ipv4;
 use pdu::{Ethernet, EthernetPdu};
 use std::fs::File;
+use std::time::Duration;
 
 mod matrix;
 mod msg;
@@ -13,7 +14,8 @@ mod utils;
 
 #[derive(Debug)]
 struct UdpPacket {
-    index: Option<usize>,
+    timestamp: Duration,
+    pcap_index: Option<usize>,
     src_port: u16,
     dst_port: u16,
     src_address: [u8; 4],
@@ -38,7 +40,8 @@ impl TryFrom<PcapPacket<'_>> for UdpPacket {
                 let contents = &udp_buffer[8..];
                 //println!("[udp]: {:?}, size: {}", &contents[..4], contents.len());
                 return Ok(UdpPacket {
-                    index: None,
+                    timestamp: pcap_pkt.timestamp,
+                    pcap_index: None,
                     src_address: ipv4_pdu.source_address(),
                     dst_address: ipv4_pdu.destination_address(),
                     src_port: BigEndian::read_u16(&udp_buffer[..]),
@@ -62,7 +65,7 @@ fn get_all_udp_packets(file: &str) -> anyhow::Result<Vec<UdpPacket>> {
         //Check if there is no error
         let pkt = pkt?;
         if let Ok(mut udp) = UdpPacket::try_from(pkt) {
-            udp.index = Some(index);
+            udp.pcap_index = Some(index);
             v.push(udp);
         }
 
