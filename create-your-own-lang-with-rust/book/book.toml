@@ -1,0 +1,21 @@
+[book]
+authors = ["Ehsan M. Kermani"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Create Your Own Programming Language with Rust"
+version = "0.1"
+
+[output.html]
+google-analytics = "UA-168768722-1"
+additional-css = ["theme/custom.css"]
+preferred-dark-theme = "Rust"
+
+[output.html.search]
+enable = true
+
+[output.linkcheck]
+optional = true
+follow-web-links = true
+exclude = ['blacklivesmatter\.com']
+warning-policy = "error"
