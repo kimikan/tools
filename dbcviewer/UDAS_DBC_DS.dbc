@@ -1,0 +1,102 @@
+VERSION ""
+
+
+NS_ : 
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	CAT_DEF_
+	CAT_
+	FILTER
+	BA_DEF_DEF_
+	EV_DATA_
+	ENVVAR_DATA_
+	SGTYPE_
+	SGTYPE_VAL_
+	BA_DEF_SGTYPE_
+	BA_SGTYPE_
+	SIG_TYPE_REF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	SIGTYPE_VALTYPE_
+	BO_TX_BU_
+	BA_DEF_REL_
+	BA_REL_
+	BA_DEF_DEF_REL_
+	BU_SG_REL_
+	BU_EV_REL_
+	BU_BO_REL_
+	SG_MUL_VAL_
+
+BS_:
+
+BU_: Rear_Ultrasonic_Radar_ECU Front_Ultrasonic_Radar_ECU
+VAL_TABLE_ Ultrasonic_Information 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+
+
+BO_ 1481 Front_Ultrasonic_Radar: 8 Front_Ultrasonic_Radar_ECU
+ SG_ FF : 47|8@0+ (2,0) [0|500] "cm" Vector__XXX
+ SG_ FE : 39|8@0+ (2,0) [0|500] "cm" Vector__XXX
+ SG_ FD : 31|8@0+ (2,0) [0|500] "cm" Vector__XXX
+ SG_ FC : 23|8@0+ (2,0) [0|500] "cm" Vector__XXX
+ SG_ FB : 15|8@0+ (2,0) [0|500] "cm" Vector__XXX
+ SG_ FA : 7|8@0+ (2,0) [0|500] "cm" Vector__XXX
+
+BO_ 1480 Rear_Ultrasonic_Radar: 8 Rear_Ultrasonic_Radar_ECU
+ SG_ RF : 47|8@0+ (2,0) [0|500] "cm" Vector__XXX
+ SG_ RE : 39|8@0+ (2,0) [0|500] "cm" Vector__XXX
+ SG_ RD : 31|8@0+ (2,0) [0|500] "cm" Vector__XXX
+ SG_ RC : 23|8@0+ (2,0) [0|500] "cm" Vector__XXX
+ SG_ RB : 15|8@0+ (2,0) [0|500] "cm" Vector__XXX
+ SG_ RA : 7|8@0+ (2,0) [0|500] "cm" Vector__XXX
+
+
+
+BA_DEF_ SG_  "GenSigSendType" ENUM  "Cyclic","OnWrite","OnWriteWithRepetition","OnChange","OnChangeWithRepetition","IfActive","IfActiveWithRepetition","NoSigSendType";
+BA_DEF_ SG_  "GenSigInactiveValue" INT 0 0;
+BA_DEF_ BO_  "GenMsgCycleTime" INT 0 0;
+BA_DEF_ BO_  "GenMsgSendType" ENUM  "Cyclic","not_used","not_used","not_used","not_used","Cyclic","not_used","IfActive","NoMsgSendType";
+BA_DEF_ BU_  "NmStationAddress" HEX 0 0;
+BA_DEF_  "DBName" STRING ;
+BA_DEF_  "BusType" STRING ;
+BA_DEF_ BU_  "NodeLayerModules" STRING ;
+BA_DEF_ BU_  "ECU" STRING ;
+BA_DEF_ BU_  "CANoeJitterMax" INT 0 0;
+BA_DEF_ BU_  "CANoeJitterMin" INT 0 0;
+BA_DEF_ BU_  "CANoeDrift" INT 0 0;
+BA_DEF_ BU_  "CANoeStartDelay" INT 0 0;
+BA_DEF_DEF_  "GenSigSendType" "Cyclic";
+BA_DEF_DEF_  "GenSigInactiveValue" 0;
+BA_DEF_DEF_  "GenMsgCycleTime" 0;
+BA_DEF_DEF_  "GenMsgSendType" "NoMsgSendType";
+BA_DEF_DEF_  "NmStationAddress" 0;
+BA_DEF_DEF_  "DBName" "";
+BA_DEF_DEF_  "BusType" "CAN";
+BA_DEF_DEF_  "NodeLayerModules" "";
+BA_DEF_DEF_  "ECU" "";
+BA_DEF_DEF_  "CANoeJitterMax" 0;
+BA_DEF_DEF_  "CANoeJitterMin" 0;
+BA_DEF_DEF_  "CANoeDrift" 0;
+BA_DEF_DEF_  "CANoeStartDelay" 0;
+BA_ "BusType" "CAN";
+BA_ "DBName" "UDAS";
+BA_ "GenMsgCycleTime" BO_ 1481 100;
+BA_ "GenMsgSendType" BO_ 1481 0;
+BA_ "GenMsgCycleTime" BO_ 1480 100;
+BA_ "GenMsgSendType" BO_ 1480 0;
+VAL_ 1481 FF 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+VAL_ 1481 FE 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+VAL_ 1481 FD 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+VAL_ 1481 FC 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+VAL_ 1481 FB 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+VAL_ 1481 FA 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+VAL_ 1480 RF 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+VAL_ 1480 RE 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+VAL_ 1480 RD 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+VAL_ 1480 RC 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+VAL_ 1480 RB 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+VAL_ 1480 RA 0 "no obstacle" 254 "sensor error repair" 253 "sensor error temporary" ;
+
