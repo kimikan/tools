@@ -1,0 +1,149 @@
+// Zed settings
+//
+// For information on how to configure Zed, see the Zed
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run `zed: open default settings` from the
+// command palette (cmd-shift-p / ctrl-shift-p)
+{
+  "icon_theme": "JetBrains New UI Icons (Light)",
+  "use_smartcase_search": true,
+  // Inlay hint related settings
+  "inlay_hints": {
+    // Global switch to toggle hints on and off, switched off by default.
+    "enabled": true,
+    // Toggle certain types of hints on and off, all switched on by default.
+    "show_type_hints": true,
+    "show_parameter_hints": true,
+    // Corresponds to null/None LSP hint type value.
+    "show_other_hints": true,
+    // Whether to show a background for inlay hints.
+    //
+    // If set to `true`, the background will use the `hint.background` color from the current theme.
+    "show_background": false,
+    // Time to wait after editing the buffer, before requesting the hints,
+    // set to 0 to disable debouncing.
+    "edit_debounce_ms": 700,
+    // Time to wait after scrolling the buffer, before requesting the hints,
+    // set to 0 to disable debouncing.
+    "scroll_debounce_ms": 50,
+    /// A set of modifiers which, when pressed, will toggle the visibility of inlay hints.
+    /// If the set if empty or not all the modifiers specified are pressed, inlay hints will not be toggled.
+    "toggle_on_modifiers_press": {
+      "control": false,
+      "shift": false,
+      "alt": false,
+      "platform": false,
+      "function": false
+    }
+  },
+  "format_on_save": "on",
+  "languages": {
+    "C": {
+      "format_on_save": "on",
+      "formatter": {
+        "external": {
+          "command": "clang-format",
+          "arguments": ["{buffer_path}"]
+        }
+      }
+    },
+    "C++": {
+      "format_on_save": "on",
+      "formatter": {
+        "external": {
+          "command": "clang-format",
+          "arguments": ["{buffer_path}"]
+        }
+      }
+    }
+  },
+
+  "diagnostics": {
+    // Whether to show warnings or not by default.
+    "include_warnings": true,
+    // Settings for inline diagnostics
+    "inline": {
+      // Whether to show diagnostics inline or not
+      "enabled": true,
+      // The delay in milliseconds to show inline diagnostics after the
+      // last diagnostic update.
+      "update_debounce_ms": 150,
+      // The amount of padding between the end of the source line and the start
+      // of the inline diagnostic in units of em widths.
+      "padding": 4,
+      // The minimum column to display inline diagnostics. This setting can be
+      // used to horizontally align inline diagnostics at some column. Lines
+      // longer than this value will still push diagnostics further to the right.
+      "min_column": 0,
+      // The minimum severity of the diagnostics to show inline.
+      // Shows all diagnostics when not specified.
+      "max_severity": null
+    }
+  },
+  "agent": {
+    "default_model": {
+      "provider": "openai",
+      "model": "gpt-3.5-turbo"
+    },
+    "version": "2"
+  },
+  "telemetry": {
+    "diagnostics": true
+  },
+  "buffer_font_family": "Ubuntu",
+  "ui_font_size": 16,
+  "buffer_font_size": 16,
+  "tab_size": 2,
+  "hard_tabs": false,
+  "theme": {
+    "mode": "light",
+    "light": "Quiet Light",
+    "dark": "Ayu Dark"
+  },
+
+  "buffer_font_weight": 400,
+  "features": {
+    "editor_font_overrides": true // Ensure this is true to enable font overrides by scope
+  },
+  "editor_font_overrides": [
+    {
+      "scopes": ["keyword", "storage", "control"], // Example: make keywords bold
+      "face": {
+        "weight": "bold" // Use the bold weight of the font
+      }
+    },
+    {
+      "scopes": ["type"], // Example: make type names bold
+      "face": {
+        "weight": "bold"
+      }
+    },
+    {
+      "scopes": ["markup.bold"], // For markdown bold text
+      "face": {
+        "weight": "bold"
+      }
+    },
+    {
+      "scopes": ["heading"], // For markdown headings
+      "face": {
+        "weight": "bold"
+      }
+    }
+  ],
+  // Set the buffer's line height.
+  // May take 3 values:
+  //  1. Use a line height that's comfortable for reading (1.618)
+  //         "buffer_line_height": "comfortable"
+  //  2. Use a standard line height, (1.3)
+  //         "buffer_line_height": "standard",
+  //  3. Use a custom line height
+  //         "buffer_line_height": {
+  //           "custom": 2
+  //         },
+  "buffer_line_height": {
+    "custom": 1.2
+  }
+}
