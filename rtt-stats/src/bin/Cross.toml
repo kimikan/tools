@@ -1,0 +1,9 @@
+[target.aarch64-unknown-linux-gnu]
+pre-build = [
+    "dpkg --add-architecture arm64",
+    "apt-get update",
+    "apt-get install -y pkg-config",
+    "wget https://www.openssl.org/source/openssl-1.1.1w.tar.gz",
+    "tar xzf openssl-1.1.1w.tar.gz",
+    "cd openssl-1.1.1w && ./Configure linux-x86_64 no-shared --prefix=/usr/local && make -j$(nproc) && make install",
+]

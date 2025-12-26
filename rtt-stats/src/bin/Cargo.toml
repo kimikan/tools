@@ -1,0 +1,41 @@
+[package]
+name = "rtt-stats"
+version = "0.1.0"
+authors = ["kan <kan@xx.com>"]
+edition = "2024"
+
+[[bin]]
+name = "rtt-stats"
+path = "src/main.rs"
+
+[[bin]]
+name = "traceroute"
+path = "src/bin/trace.rs"
+
+[[bin]]
+name = "ping"
+path = "src/bin/ping.rs"
+
+[[bin]]
+name = "speedtest"
+path = "src/bin/speedtest.rs"
+
+[dependencies]
+tokio = { version = "1.41.1", features = [
+    "full",
+] }
+anyhow = "1.0.100"
+statrs = "0.18.0"
+bincode = "2.0.1"
+serde = { version = "1.0.228", features = ["derive"] }
+chrono = "0.4.42"
+#plotters="*"
+clap = { version = "4.5.51", features = ["derive"] }
+trippy-core = "0.13.0"
+periodically="0.2.0"
+ntrace = "0.2.0"
+single-ping="0.1.0"
+speedtest-rs = {version = "0.2.0", features=["rustls-tls"]}
+
+[patch.crates-io]
+speedtest-rs = { path="./src/speedtest-rs-0.2.0" }
